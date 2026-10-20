@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teil 3B: MRT Seminar, Praxiseinheit & Simulator – MaReCuM Physik</title>
+  <style>
+    :root {
+      --bg: #0b1120; --surface: #1e293b; --surface-hover: #334155; --border: #334155;
+      --text: #f8fafc; --text-muted: #94a3b8; --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, 0.12); --exam: #f59e0b;
+      --exam-bg: rgba(245, 158, 11, 0.12); --clinic: #10b981;
+      --clinic-bg: rgba(16, 185, 129, 0.12); --low: #64748b;
+      --low-bg: rgba(100, 116, 139, 0.12); --danger: #f87171; --radius: 10px;
+    }
+    body.light {
+      --bg: #f1f5f9; --surface: #ffffff; --surface-hover: #f8fafc; --border: #cbd5e1;
+      --text: #0f172a; --text-muted: #475569; --accent: #0284c7;
+      --accent-soft: rgba(2, 132, 199, 0.1); --exam: #d97706;
+      --exam-bg: rgba(217, 119, 6, 0.08); --clinic: #059669;
+      --clinic-bg: rgba(5, 150, 105, 0.08); --low: #64748b;
+      --low-bg: rgba(100, 116, 139, 0.08); --danger: #dc2626;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg); color: var(--text); line-height: 1.62; display: flex; min-height: 100vh;
+    }
+    .sidebar {
+      width: 295px; background: var(--surface); border-right: 1px solid var(--border);
+      padding: 20px 16px; display: flex; flex-direction: column; position: fixed; height: 100vh; overflow-y: auto; z-index: 100;
+    }
+    .brand { font-size: 1.15rem; font-weight: 800; color: var(--accent); margin-bottom: 2px; }
+    .subtitle { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 14px; }
+    .search-box {
+      width: 100%; padding: 8px 10px; border-radius: var(--radius); border: 1px solid var(--border);
+      background: var(--bg); color: var(--text); margin-bottom: 12px; font-size: 0.86rem;
+    }
+    .nav-btn {
+      width: 100%; text-align: left; padding: 9px 12px; margin-bottom: 5px; background: transparent;
+      border: none; border-radius: var(--radius); color: var(--text); cursor: pointer; font-size: 0.88rem; font-weight: 500;
+    }
+    .nav-btn:hover { background: var(--surface-hover); }
+    .nav-btn.active {
+      background: var(--accent-soft); color: var(--accent); font-weight: 700; border-left: 3px solid var(--accent);
+    }
+    .controls { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
+    .ctrl-btn {
+      padding: 7px 10px; border-radius: var(--radius); border: 1px solid var(--border);
+      background: var(--bg); color: var(--text); cursor: pointer; font-size: 0.8rem; font-weight: 600; text-align: left;
+    }
+    .ctrl-btn.active-filter { border-color: var(--exam); background: var(--exam-bg); color: var(--exam); }
+    .main { margin-left: 295px; flex: 1; padding: 28px 36px; max-width: 1240px; }
+    .tab-section { display: none; }
+    .tab-section.active { display: block; }
+    h1 { font-size: 1.68rem; margin-bottom: 6px; color: var(--accent); }
+    .section-lead { color: var(--text-muted); margin-bottom: 18px; font-size: 0.93rem; }
+    h2 { font-size: 1.18rem; margin: 24px 0 12px; padding-bottom: 5px; border-bottom: 1px solid var(--border); }
+    h3 { font-size: 1.02rem; margin: 8px 0 6px; color: var(--accent); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; margin-bottom: 16px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
+    .card.exam-card { border-left: 4px solid var(--exam); background: linear-gradient(180deg, var(--exam-bg) 0%, var(--surface) 40%); }
+    .card.clinic-card { border-left: 4px solid var(--clinic); background: linear-gradient(180deg, var(--clinic-bg) 0%, var(--surface) 40%); }
+    .low-yield { border: 1px dashed var(--low); background: var(--low-bg); opacity: 0.88; }
+    body.exam-only .low-yield { display: none !important; }
+    .card ul, .card ol { padding-left: 18px; margin-top: 5px; }
+    .card li { margin-bottom: 5px; }
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 0.7rem;
+      font-weight: 700; margin-bottom: 6px; text-transform: uppercase;
+    }
+    .badge.exam { background: var(--exam-bg); color: var(--exam); border: 1px solid var(--exam); }
+    .badge.clinic { background: var(--clinic-bg); color: var(--clinic); border: 1px solid var(--clinic); }
+    .badge.low { background: var(--low-bg); color: var(--text-muted); border: 1px solid var(--low); }
+    .formula-box {
+      background: var(--bg); border-left: 4px solid var(--accent); padding: 9px 12px; margin: 8px 0;
+      border-radius: 6px; font-family: "Cambria Math", Georgia, serif; font-size: 1.03rem;
+      display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+    }
+    .frac { display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center; padding: 0 3px; }
+    .frac > span:first-child { border-bottom: 1px solid var(--text); padding-bottom: 1px; }
+    .frac > span:last-child { padding-top: 1px; }
+    .vec { text-decoration: overline; }
+    table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.88rem; background: var(--surface); border-radius: var(--radius); overflow: hidden; }
+    th, td { padding: 9px 11px; border: 1px solid var(--border); text-align: left; }
+    th { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+    details { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 10px; padding: 12px 16px; }
+    summary { font-weight: 700; cursor: pointer; color: var(--accent); outline: none; }
+    details.low-yield summary { color: var(--text-muted); }
+    details[open] summary { margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+    .svg-box {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+      padding: 12px; margin: 10px 0; text-align: center;
+    }
+    .svg-box svg { max-width: 100%; height: auto; }
+    .cite { font-size: 0.68rem; color: var(--text-muted); opacity: 0.75; margin-left: 2px; }
+    body.hide-cites .cite { display: none; }
+    .sim-canvas { width: 100%; height: auto; background: #070d19; border: 1px solid var(--border); border-radius: 8px; display: block; margin-bottom: 12px; }
+    body.light .sim-canvas { background: #f8fafc; }
+    .calc-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+    .calc-input { padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); width: 100px; }
+    @media (max-width: 820px) {
+      body { flex-direction: column; }
+      .sidebar { width: 100%; height: auto; position: relative; }
+      .main { margin-left: 0; padding: 16px; }
+    }
+  </style>
+</head>
+<body class="hide-cites">
+
+  <aside class="sidebar">
+    <div class="brand">Teil 3B: MRT Komplett</div>
+    <div class="subtitle">Seminar CKM & Praxiseinheit Tisch-MRT <span class="cite">[cite: 218, 283]</span></div>
+    <input type="text" id="searchInput" class="search-box" placeholder="Suche (z.B. Larmor, Shim, T2*, Flip)..." oninput="filterContent()">
+
+    <button class="nav-btn active" onclick="openTab('sec1', this)">1. Spin, Präzession & M₀</button>
+    <button class="nav-btn" onclick="openTab('sec2', this)">2. Resonanz, 90°/180°-Puls & FID</button>
+    <button class="nav-btn" onclick="openTab('sec3', this)">3. Relaxation: T₁, T₂ & T₂*</button>
+    <button class="nav-btn" onclick="openTab('sec4', this)">4. 🔬 Praxiseinheit & 🎮 Simulator</button>
+
+    <div class="controls">
+      <button class="ctrl-btn" id="examFilterBtn" onclick="toggleExamMode()">🎯 Nur Prüfungsrelevantes: AUS</button>
+      <button class="ctrl-btn" onclick="document.body.classList.toggle('light'); drawMriSim();">🌗 Hell / Dunkel umschalten</button>
+      <button class="ctrl-btn" onclick="document.body.classList.toggle('hide-cites')">📑 Folien-Quellen ein/aus</button>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- ==================== SEKTION 1: SPIN, PRÄZESSION & M0 ==================== -->
+    <section id="sec1" class="tab-section active">
+      <h1>1. Hardware, Kernspin, Präzession & Makroskopische Magnetisierung M₀</h1>
+      <p class="section-lead">MRT-Seminar (CKM, Folien 5–22) – Vom einzelnen quantenmechanischen Proton zum makroskopischen Magnetisierungsvektor <span class="vec">M</span><sub>0</sub> <span class="cite">[cite: 222, 226, 229, 231, 237]</span>.</p>
+
+      <h2>1.1 MRT-Komponenten & Das magnetische Dipolmoment</h2>
+      <div class="grid">
+        <div class="card exam-card">
+          <span class="badge exam">🔥 Klausur-Fokus (Folie 5 & 9–12)</span>
+          <h3>Hardware-Größenordnungen & Kernspin I</h3>
+          <ul>
+            <li><strong>Die 4 technischen Spulensysteme eines MRT (Folie 5) <span class="cite">[cite: 222]</span>:</strong>
+              <br>1. <strong>Hauptmagnet B<sub>0</sub>:</strong> Statisches Magnetfeld (<strong>B<sub>0</sub> = 0,1 bis 21,1 T</strong>; klinisch meist 1,5 T oder 3,0 T) → erzeugt die Längsmagnetisierung M<sub>0</sub> <span class="cite">[cite: 222, 239, 247]</span>.
+              <br>2. <strong>Shim-Spulen:</strong> Korrigieren lokale Inhomogenitäten des B<sub>0</sub>-Feldes <span class="cite">[cite: 222, 288]</span>.
+              <br>3. <strong>Gradientenspulen G<sub>xyz</sub>:</strong> (ca. <strong>40 mT/m</strong>) für die Ortskodierung (Bild) <span class="cite">[cite: 222]</span>.
+              <br>4. <strong>RF-Spulen (Hochfrequenz Sende-/Empfangsspulen):</strong> Erzeugen das schwache Wechselfeld <strong>B<sub>1</sub> (~ μT)</strong> zur Anregung und empfangen das Signal <span class="cite">[cite: 222]</span>.
+            </li>
+            <li><strong>Was ist der Kernspin I (Folie 9 & 12)?</strong>
+              <br>• Ein intrinsischer Drehimpuls (fundamentale Kerneigenschaft wie Masse oder Ladung; quantisiert in halbzahligen 1/2, 3/2 oder ganzzahligen Werten 0, 1) <span class="cite">[cite: 226]</span>.
+              <br>• Proton (<sup>1</sup>H), Neutron und Elektron haben jeweils <strong>I = 1/2</strong> <span class="cite">[cite: 226]</span>.
+              <br>• <strong>Grundbedingung für MRT:</strong> Nur Kerne mit <strong>I ≠ 0</strong> besitzen ein magnetisches Dipolmoment <span class="vec">μ</span> (für I = 0 ist <span class="vec">μ</span> = 0, also keine Magnetisierung möglich!) <span class="cite">[cite: 229, 234]</span>:
+              <div class="formula-box">
+                <span class="vec">μ</span> = γ · <span class="vec">I</span> &nbsp;&nbsp;|&nbsp;&nbsp; Für Wasserstoff (<sup>1</sup>H): γ = 26,75 · 10<sup>7</sup> <span class="frac"><span>rad</span><span>s · T</span></span> &nbsp;(<span class="frac"><span>γ</span><span>2π</span></span> ≈ 42,58 <span class="frac"><span>MHz</span><span>T</span></span>) <span class="cite">[cite: 229, 285]</span>
+              </div>
+              <small>Andere MR-aktive „X-Kerne" (Folie 2 & 12): <sup>13</sup>C, <sup>17</sup>O (γ &lt; 0!), <sup>19</sup>F, <sup>23</sup>Na, <sup>31</sup>P <span class="cite">[cite: 219, 229]</span>.</small>
+            </li>
+          </ul>
+        </div>
+
+        <div class="card exam-card">
+          <span class="badge exam">🔥 Klausur-Fokus (Folie 12–17)</span>
+          <h3>Rotation vs. Spin vs. Präzession & Larmor-Frequenz</h3>
+          <div class="svg-box">
+            <svg viewBox="0 0 480 175" xmlns="http://www.w3.org/2000/svg">
+              <!-- Links: Präzessionskegel -->
+              <line x1="115" y1="155" x2="115" y2="15" stroke="#4ade80" stroke-width="2.5"/>
+              <polygon points="115,10 110,22 120,22" fill="#4ade80"/>
+              <text x="125" y="22" fill="#4ade80" font-size="12" font-weight="bold">B₀ (z-Achse)</text>
+              <ellipse cx="115" cy="48" rx="58" ry="16" fill="none" stroke="#38bdf8" stroke-width="2" stroke-dasharray="4,3"/>
+              <line x1="115" y1="135" x2="165" y2="52" stroke="#f87171" stroke-width="3"/>
+              <circle cx="143" cy="88" r="16" fill="#334155" stroke="#fbbf24" stroke-width="2"/>
+              <text x="168" y="45" fill="#f87171" font-size="12" font-weight="bold">μ , I (Spin)</text>
+              <text x="45" y="42" fill="#38bdf8" font-size="11" font-weight="bold">Präzession ω₀</text>
+              <text x="115" y="168" fill="#94a3b8" font-size="10" text-anchor="middle">1. Präzession auf Kegelmantel</text>
+              <!-- Rechts: Zeeman & M0 -->
+              <line x1="265" y1="90" x2="310" y2="90" stroke="#94a3b8" stroke-width="2"/>
+              <line x1="310" y1="90" x2="385" y2="45" stroke="#f87171" stroke-width="2"/>
+              <line x1="310" y1="90" x2="385" y2="135" stroke="#4ade80" stroke-width="2"/>
+              <text x="345" y="38" fill="#f87171" font-size="10" font-weight="bold">Spin −½ (antiparallel, E hoch)</text>
+              <text x="345" y="150" fill="#4ade80" font-size="10" font-weight="bold">Spin +½ (parallel, E niedrig)</text>
+              <text x="365" y="95" fill="#fbbf24" font-size="11" font-weight="bold">ΔE = ℏ·γ·B₀</text>
+              <!-- M0 Pfeil -->
+              <line x1="445" y1="145" x2="445" y2="35" stroke="#ef4444" stroke-width="5"/>
+              <polygon points="445,22 436,40 454,40" fill="#ef4444"/>
+              <text x="445" y="165" fill="#ef4444" font-size="12" font-weight="bold" text-anchor="middle">∑μ = M₀</text>
+            </svg>
+          </div>
+          <ul>
+            <li><strong>Was ist Präzession (Kreisel-Analogie, Folie 14–16)?</strong> Übt ein äußeres Feld (<span class="vec">G</span> beim Spielzeugkreisel bzw. <span class="vec">B</span><sub>0</sub> beim Proton) ein Drehmoment (<span class="vec">M</span> = <span class="vec">μ</span> × <span class="vec">B</span>) senkrecht zur Drehachse aus, kippt der Kreisel nicht um, sondern seine Achse wandert auf dem <strong>Mantel eines Kegels</strong> um die Feldachse <span class="cite">[cite: 230, 231, 238]</span>.</li>
+            <li><strong>Larmor-Frequenz ω<sub>0</sub> (Präzessionsfrequenz, Folie 17):</strong>
+              <div class="formula-box">
+                ω<sub>0</sub> = γ · B<sub>0</sub> &nbsp;&nbsp;bzw.&nbsp;&nbsp; f<sub>0</sub> = ν<sub>L</sub> = <span class="frac"><span>γ</span><span>2π</span></span> · B<sub>0</sub> <span class="cite">[cite: 234, 285]</span>
+              </div>
+              <em>Wichtige Werte für <sup>1</sup>H:</em> Bei <strong>1,5 T → f<sub>0</sub> ≈ 64 MHz</strong>; bei <strong>3,0 T → f<sub>0</sub> ≈ 128 MHz</strong> <span class="cite">[cite: 247, 285]</span>.
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <h2>1.2 Zeeman-Aufspaltung & Makroskopische Nettomagnetisierung M₀</h2>
+      <div class="card exam-card">
+        <span class="badge exam">🔥 Klausur-Fokus (Folie 17–22 & 25)</span>
+        <ul>
+          <li><strong>Ohne Magnetfeld (B = 0, Folie 20 & 25):</strong> Die magnetischen Momente der Protonen im Gewebe sind thermisch völlig zufällig in alle Raumrichtungen verteilt → ihre Vektorsumme hebt sich auf (<strong><span class="vec">M</span><sub>0</sub> = 0</strong>) <span class="cite">[cite: 237, 242]</span>.</li>
+          <li><strong>Im statischen Magnetfeld (B = B<sub>0</sub>, Folie 12, 17, 20):</strong> Wegen E = −<span class="vec">μ</span> · <span class="vec">B</span><sub>0</sub> richten sich Spin-1/2-Kerne in zwei diskrete Energieniveaus aus (<strong>Zeeman-Effekt</strong>) <span class="cite">[cite: 229, 234]</span>:
+            <br>• <strong>Parallel zu B<sub>0</sub> (Spin +1/2):</strong> energetisch günstiger Zustand (low energy, leicht im Überschuss besetzt!) <span class="cite">[cite: 229, 234, 237]</span>.
+            <br>• <strong>Antiparallel zu B<sub>0</sub> (Spin −1/2):</strong> energetisch höherer Zustand (high energy), Energiedifferenz <strong>ΔE = ℏ · γ · B<sub>0</sub> = h · f<sub>0</sub></strong> <span class="cite">[cite: 229, 234, 248]</span>.
+          </li>
+          <li><strong>Entstehung der makroskopischen Magnetisierung <span class="vec">M</span><sub>0</sub> (Folie 20 & 22):</strong> Da etwas mehr Spins parallel (niedrige Energie) als antiparallel stehen, ergibt die Vektoraddition aller Einzelmomente im thermischen Gleichgewicht einen konstanten Summenvektor <strong><span class="vec">M</span><sub>0</sub> exakt entlang der z-Achse (parallel zu B<sub>0</sub>)</strong> <span class="cite">[cite: 236, 237, 252]</span>.</li>
+        </ul>
+      </div>
+
+      <details class="low-yield">
+        <summary>⚙️ Am Rande erwähnt (Folie 22): Besetzungszahlverhältnis (10 ppm) & Bohrsches Korrespondenzprinzip</summary>
+        <ul>
+          <li><strong>Zahlenbeispiel (Folie 22):</strong> 1 mm<sup>3</sup> Wasser enthält ca. 6 · 10<sup>19</sup> Protonen. Bei 1,5 T beträgt der relative Überschuss im energetisch günstigeren Zustand nur ca. <strong>10 ppm (10<sup>−5</sup>)</strong> – dennoch tragen damit rund <strong>6 · 10<sup>14</sup> Protonen pro mm<sup>3</sup></strong> zur Nettomagnetisierung <span class="vec">M</span><sub>0</sub> bei <span class="cite">[cite: 239]</span>.</li>
+          <li><strong>Bohrsches Korrespondenzprinzip:</strong> Für extrem große Teilchenzahlen (n → ∞) geht die Quantenmechanik in die klassische Physik über – deshalb dürfen wir das riesige Spin-Ensemble im MRT als klassischen Magnetisierungsvektor <span class="vec">M</span> beschreiben <span class="cite">[cite: 239]</span>.</li>
+        </ul>
+      </details>
+    </section>
+
+    <!-- ==================== SEKTION 2: RESONANZ, PULSE & FID ==================== -->
+    <section id="sec2" class="tab-section">
+      <h1>2. Resonanz, Rotierendes Koordinatensystem, 90°/180°-Pulse & FID</h1>
+      <p class="section-lead">MRT-Seminar (Folien 27–46) – Warum Einzelkernpräzession noch kein MRT-Signal liefert und wie Hochfrequenzpulse (B₁) die Magnetisierung kippen <span class="cite">[cite: 247, 249, 250, 252, 255, 260, 263]</span>.</p>
+
+      <h2>2.1 Resonanzbedingung vs. Präzession & Rotierendes Bezugssystem</h2>
+      <div class="grid">
+        <div class="card exam-card">
+          <span class="badge exam">🔥 Sehr wichtig für Klausur & Testat (Folie 30–33)</span>
+          <h3>Resonanzprinzip & Warum Präzession ≠ NMR ist!</h3>
+          <ul>
+            <li><strong>Resonanzprinzip (Schaukel / Stimmgabel, Folie 30):</strong> Ein Energietransfer auf das Spinsystem ist <strong>nur resonant möglich</strong>! Die RF-Sendespule (senkrecht zur z-Achse in der xy-Ebene) muss exakt mit der Larmorfrequenz ω<sub>0</sub> arbeiten (z. B. <strong>128 MHz bei 3,0 T</strong>), damit die Photonenenergie E = h · f<sub>0</sub> genau dem Zeeman-Übergang ΔE zwischen den beiden Spin-Energieniveaus entspricht <span class="cite">[cite: 247, 248, 249]</span>.</li>
+            <li><strong>⚠️ Zentrale Unterscheidung (Folie 33): Resonanz vs. Präzession!</strong>
+              <br>• <em>Individuelle Kerne</em> präzedieren im B<sub>0</sub>-Feld <strong>immer</strong> – aber unkorreliert (außer Phase), sodass <span class="vec">M</span><sub>0</sub> starr in z-Richtung steht und <em>kein</em> Signal in einer Spule induziert <span class="cite">[cite: 250, 252]</span>.
+              <br>• Erst wenn ein resonanter <strong>RF-Puls (Feld B<sub>1</sub>)</strong> Energie zuführt und die <strong>Nettomagnetisierung <span class="vec">M</span> in die Transversalebene (xy-Ebene) kippt</strong>, präzediert <span class="vec">M</span> als Ganzes um B<sub>0</sub> – <strong>erst diese Präzession der Nettomagnetisierung <span class="vec">M</span> ist NMR!</strong> <span class="cite">[cite: 250]</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="card exam-card">
+          <span class="badge exam">🔥 Klausur-Fokus (Folie 32, 34–38)</span>
+          <h3>Rotierendes Koordinatensystem (x', y') & Flipwinkel θ</h3>
+          <div class="svg-box">
+            <svg viewBox="0 0 480 160" xmlns="http://www.w3.org/2000/svg">
+              <!-- Links: Laborsystem (Spirale) -->
+              <text x="115" y="15" fill="#94a3b8" font-size="11" font-weight="bold" text-anchor="middle">Laborsystem (x, y, z)</text>
+              <circle cx="115" cy="88" r="58" fill="none" stroke="#475569" stroke-width="1.5"/>
+              <line x1="115" y1="146" x2="115" y2="22" stroke="#94a3b8" stroke-width="1.5"/>
+              <path d="M 115 32 C 135 35, 95 45, 145 52 C 80 62, 165 72, 62 85 C 175 95, 55 102, 173 88" fill="none" stroke="#38bdf8" stroke-width="2"/>
+              <line x1="115" y1="88" x2="173" y2="88" stroke="#ef4444" stroke-width="3"/>
+              <text x="115" y="156" fill="#94a3b8" font-size="10" text-anchor="middle">Komplexe Spirale auf Kugeloberfläche</text>
+              <!-- Rechts: Rotierendes System (x', y') -->
+              <text x="355" y="15" fill="#fbbf24" font-size="11" font-weight="bold" text-anchor="middle">Rotierendes System (x', y', z)</text>
+              <line x1="320" y1="125" x2="320" y2="25" stroke="#94a3b8" stroke-width="2"/>
+              <line x1="320" y1="125" x2="435" y2="125" stroke="#94a3b8" stroke-width="2"/>
+              <line x1="320" y1="125" x2="275" y2="148" stroke="#94a3b8" stroke-width="2"/>
+              <text x="265" y="152" fill="#f87171" font-size="11" font-weight="bold">x' (B₁)</text>
+              <text x="442" y="128" fill="#4ade80" font-size="11" font-weight="bold">y'</text>
+              <text x="310" y="25" fill="#38bdf8" font-size="11" font-weight="bold">z</text>
+              <!-- Mz nach Mxy Kippen -->
+              <line x1="320" y1="125" x2="320" y2="42" stroke="#38bdf8" stroke-width="3" stroke-dasharray="3,3"/>
+              <path d="M 325 50 A 75 75 0 0 1 395 120" fill="none" stroke="#fbbf24" stroke-width="2.5"/>
+              <line x1="320" y1="125" x2="405" y2="125" stroke="#ef4444" stroke-width="4"/>
+              <text x="380" y="75" fill="#fbbf24" font-size="11" font-weight="bold">90°-Kippung (θ = γ·B₁·t_RF)</text>
+              <text x="365" y="142" fill="#ef4444" font-size="11" font-weight="bold">M_xy = M₀</text>
+            </svg>
+          </div>
+          <ul>
+            <li><strong>Warum nutzt man das rotierende Bezugssystem (x', y', Folie 36)?</strong> Da die x'-y'-Ebene synchron mit der Larmorfrequenz ω<sub>RF</sub> = γ·B<sub>0</sub> mitrotiert, steht der <span class="vec">B</span><sub>1</sub>-Vektor des RF-Pulses darin still. Der Vektor <span class="vec">M</span> „sieht" dort nur das B<sub>1</sub>-Feld und kippt auf einem einfachen Kreisbogen mit ω<sub>1</sub> = γ·B<sub>1</sub> nach unten (während er im Laborsystem eine Spirale auf der Kugeloberfläche beschreibt) <span class="cite">[cite: 253, 255]</span>.</li>
+            <li><strong>Formel für den Flipwinkel θ (Folie 32):</strong>
+              <div class="formula-box">
+                θ = γ · B<sub>1</sub> · t<sub>RF</sub> &nbsp;(abhängig von HF-Feldstärke B<sub>1</sub> und Pulsdauer t<sub>RF</sub>!) <span class="cite">[cite: 249, 287]</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <h2>2.2 Vergleich der Magnetisierungszustände & Signalinduktion (FID)</h2>
+      <div class="grid">
+        <div class="card exam-card">
+          <span class="badge exam">🔥 Klausur-Fokus (Folie 35 & 38)</span>
+          <h3>Longitudinale (M<sub>z</sub>) vs. Transversale Magnetisierung (M<sub>xy</sub>)</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Zustand</th>
+                <th>Längsmagnetisierung M<sub>z</sub></th>
+                <th>Quermagnetisierung M<sub>xy</sub></th>
+                <th>Besetzungszahlen (Spin +½ vs. −½)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Thermisches Gleichgewicht</strong> (vor RF-Puls) <span class="cite">[cite: 252]</span></td>
+                <td><strong>M<sub>z</sub> = M<sub>0</sub></strong> (maximal) <span class="cite">[cite: 252]</span></td>
+                <td><strong>M<sub>xy</sub> = 0</strong> <span class="cite">[cite: 252]</span></td>
+                <td>N<sub>+1/2</sub> &gt; N<sub>−1/2</sub> (leichter Überschuss parallel) <span class="cite">[cite: 237, 249]</span></td>
+              </tr>
+              <tr>
+                <td><strong>Direkt nach 90°-Puls (π/2-Puls)</strong> <span class="cite">[cite: 252, 255]</span></td>
+                <td><strong>M<sub>z</sub> = 0</strong> <span class="cite">[cite: 252, 255]</span></td>
+                <td><strong>M<sub>xy</sub> = M<sub>0</sub></strong> (maximales Signal!) <span class="cite">[cite: 252, 255]</span></td>
+                <td><strong>N<sub>−1/2</sub> = N<sub>+1/2</sub></strong> (Gleichbesetzung + Phasenkohärenz) <span class="cite">[cite: 255]</span></td>
+              </tr>
+              <tr>
+                <td><strong>Direkt nach 180°-Puls (π-Puls / Inversion)</strong> <span class="cite">[cite: 255]</span></td>
+                <td><strong>M<sub>z</sub> = −M<sub>0</sub></strong> (invertiert) <span class="cite">[cite: 255]</span></td>
+                <td><strong>M<sub>xy</sub> = 0</strong> <span class="cite">[cite: 255]</span></td>
+                <td><strong>N<sub>−1/2</sub> &gt; N<sub>+1/2</sub></strong> (Besetzungsinversion) <span class="cite">[cite: 255]</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card exam-card">
+          <span class="badge exam">🔥 Klausur-Fokus (Folie 41–46)</span>
+          <h3>Faradaysche Induktion & Free Induction Decay (FID)</h3>
+          <div class="formula-box">
+            Faradaysches Induktionsgesetz: U<sub>ind</sub> = − <span class="frac"><span>dΦ</span><span>dt</span></span> = − <span class="frac"><span>d</span><span>dt</span></span> ∫<sub>A</sub> B dA <span class="cite">[cite: 260]</span>
+          </div>
+          <ul>
+            <li><strong>Prinzip Fahrraddynamo (Folie 42–43):</strong> Nach dem 90°-Puls rotiert die transversale Magnetisierung <span class="vec">M</span><sub>xy</sub> wie ein Stabmagnet in der xy-Ebene an der Empfangsspule vorbei. Der zeitlich wechselnde magnetische Fluss induziert eine Wechselspannung in der Spule – das <strong>FID-Signal (Free Induction Decay)</strong> <span class="cite">[cite: 259, 260, 263]</span>.</li>
+            <li><strong>Laborsystem vs. Rotierendes System (Folie 45):</strong> Im Laborsystem ist der FID eine mit ω<sub>0</sub> oszillierende gedämpfte Schwingung; im rotierenden Bezugssystem sieht man direkt die rot eingezeichnete exponentielle <strong>Einhüllende</strong> des Abfalls <span class="cite">[cite: 258, 262]</span>.</li>
+            <li><strong>4 Kerneigenschaften des FID (Folie 46) <span class="cite">[cite: 263]</span>:</strong>
+              <br>1. Wird nur durch die <strong>transversale Magnetisierung M<sub>xy</sub></strong> induziert <span class="cite">[cite: 263]</span>.
+              <br>2. Ist ein <strong>komplexes Signal</strong> (Real- und Imaginärteil bzw. Amplitude und Phase) <span class="cite">[cite: 263, 286]</span>.
+              <br>3. Anfangsamplitude hängt ab von Flipwinkel (maximal bei 90°!), Spulensensitivität, Magnetfeldstärke B<sub>0</sub> und Protonendichte <span class="cite">[cite: 263, 287]</span>.
+              <br>4. Zerfällt exponentiell mit der effektiven transversalen Relaxationszeit <strong>T<sub>2</sub>*</strong> <span class="cite">[cite: 263, 281]</span>.
+            </li>
+          </ul>
+          <details class="low-yield" style="margin-top:8px;">
+            <summary>⚙️ Am Rande erwähnt (Folie 44): Das Reziprozitätsprinzip der Antenne/Spule</summary>
+            <p>Eine Spule empfängt von einem Gewebeelement genau dann eine hohe Signalspannung (Empfangsfall), wenn ein Strom durch dieselbe Spule am Ort des Gewebes ein hohes Magnetfeld erzeugen würde (Sendefall) <span class="cite">[cite: 261]</span>.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SEKTION 3: RELAXATION T1, T2 & T2* ==================== -->
+    <section id="sec3" class="tab-section">
+      <h1>3. Relaxation im Detail: T₁, T₂, T₂* & Seminar-Übung</h1>
+      <p class="section-lead">MRT-Seminar (Folien 48–65) – Rückkehr in den energetisch günstigeren Ausgangszustand (Basketball-Analogie), Bloch-Lösungen und Verlust der Phasenkohärenz <span class="cite">[cite: 265, 269, 275, 278, 281, 282]</span>.</p>
+
+      <h2>3.1 Vergleich: T₁-Relaxation vs. T₂-Relaxation vs. T₂*-Relaxation</h2>
+      <div class="svg-box">
+        <svg viewBox="0 0 780 185" xmlns="http://www.w3.org/2000/svg">
+          <!-- Links: T1 Kurve -->
+          <line x1="45" y1="150" x2="340" y2="150" stroke="#94a3b8" stroke-width="2"/>
+          <line x1="45" y1="150" x2="45" y2="20" stroke="#94a3b8" stroke-width="2"/>
+          <line x1="45" y1="35" x2="335" y2="35" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,4"/>
+          <text x="25" y="40" fill="#94a3b8" font-size="11" font-weight="bold">M₀</text>
+          <path d="M 45 150 Q 110 42, 330 37" fill="none" stroke="#f87171" stroke-width="3.5"/>
+          <line x1="135" y1="150" x2="135" y2="77" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="3,3"/>
+          <line x1="45" y1="77" x2="135" y2="77" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="3,3"/>
+          <circle cx="135" cy="77" r="4" fill="#fbbf24"/>
+          <text x="135" y="168" fill="#f87171" font-size="12" font-weight="bold" text-anchor="middle">T₁ (63 % von M₀ erreicht)</text>
+          <text x="195" y="25" fill="#f87171" font-size="12" font-weight="bold" text-anchor="middle">T₁: M_z(t) = M₀ · (1 − e^(−t/T₁))</text>
+
+          <!-- Rechts: T2 und T2* Kurve -->
+          <line x1="435" y1="150" x2="750" y2="150" stroke="#94a3b8" stroke-width="2"/>
+          <line x1="435" y1="150" x2="435" y2="20" stroke="#94a3b8" stroke-width="2"/>
+          <text x="415" y="40" fill="#94a3b8" font-size="11" font-weight="bold">M₀</text>
+          <!-- T2 Kurve (grün) -->
+          <path d="M 435 35 Q 515 142, 740 148" fill="none" stroke="#4ade80" stroke-width="3.5"/>
+          <!-- T2* Kurve (blau gestrichelt, fällt viel schneller) -->
+          <path d="M 435 35 Q 465 145, 580 149" fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-dasharray="5,3"/>
+          <line x1="535" y1="150" x2="535" y2="108" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="3,3"/>
+          <circle cx="535" cy="108" r="4" fill="#fbbf24"/>
+          <text x="545" y="168" fill="#4ade80" font-size="12" font-weight="bold" text-anchor="middle">T₂ (auf 37 % von M₀ gefallen)</text>
+          <text x="485" y="132" fill="#38bdf8" font-size="11" font-weight="bold">T₂* (schneller!)</text>
+          <text x="595" y="25" fill="#4ade80" font-size="12" font-weight="bold" text-anchor="middle">T₂: M_xy(t) = M₀ · e^(−t/T₂)</text>
+        </svg>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Eigenschaft</th>
+            <th>T₁-Relaxation (Folie 56–58) <span class="cite">[cite: 273, 275]</span></th>
+            <th>T₂-Relaxation (Folie 59–61, 65) <span class="cite">[cite: 276, 278, 282]</span></th>
+            <th>T₂*-Relaxation (Folie 64) <span class="cite">[cite: 281]</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Synonyme</strong></td>
+            <td><strong>Longitudinale Relaxation</strong><br><strong>Spin-Gitter-Relaxation</strong> <span class="cite">[cite: 268, 275]</span></td>
+            <td><strong>Transversale Relaxation</strong><br><strong>Spin-Spin-Relaxation</strong> <span class="cite">[cite: 268, 278]</span><br>(wahre / natürliche T<sub>2</sub>-Zeit) <span class="cite">[cite: 281]</span></td>
+            <td><strong>Effektive / beobachtete transversale Relaxationszeit</strong> (bestimmt den FID-Abfall!) <span class="cite">[cite: 263, 281]</span></td>
+          </tr>
+          <tr>
+            <td><strong>Was passiert mit <span class="vec">M</span>?</strong></td>
+            <td>Wiederheranwachsen der Längsmagnetisierung <strong>M<sub>z</sub></strong> zurück zum Gleichgewichtswert M<sub>0</sub> entlang B<sub>0</sub> <span class="cite">[cite: 268, 275]</span>.</td>
+            <td>Zerfall der Quermagnetisierung <strong>M<sub>xy</sub></strong> auf Null durch <strong>Verlust der Phasenkohärenz (Dephasierung)</strong> in der xy-Ebene <span class="cite">[cite: 268, 278, 282]</span>.</td>
+            <td>Noch schnellerer Zerfall von M<sub>xy</sub> durch T<sub>2</sub> plus statische Geräte-/Gewebe-Feldinhomogenitäten (T<sub>2</sub>') <span class="cite">[cite: 281]</span>.</td>
+          </tr>
+          <tr>
+            <td><strong>Physikalische Ursache</strong></td>
+            <td><strong>Energieabgabe</strong> der angeregten Spins an die umgebenden Atome/Moleküle („<strong>Gitter</strong>") durch Stöße und EM-Wechselwirkungen <span class="cite">[cite: 275, 282]</span>.</td>
+            <td>2 Effekte (Folie 65) <span class="cite">[cite: 282]</span>:<br>1. Natürliche Spin-Spin-Wechselwirkung (lokale Mikro-Feldunterschiede B<sub>loc</sub> → Δφ = γ·B<sub>loc</sub>·Δt)<br>2. Jede T<sub>1</sub>-Relaxation führt unvermeidlich auch zu T<sub>2</sub>-Relaxation (daher ist <strong>T<sub>2</sub> immer ≤ T<sub>1</sub></strong>) <span class="cite">[cite: 281, 282]</span>!</td>
+            <td>Zusätzliche Dephasierung durch <strong>gerätabhängige Feldinhomogenitäten</strong> (Magnetqualität, Suszeptibilitätsunterschiede) mit Zeitkonstante T<sub>2</sub>' <span class="cite">[cite: 281]</span>.</td>
+          </tr>
+          <tr>
+            <td><strong>Formel (nach 90°-Puls)</strong></td>
+            <td><strong>M<sub>z</sub>(t) = M<sub>0</sub> · (1 − e<sup>−t / T₁</sup>)</strong> <span class="cite">[cite: 269, 275]</span></td>
+            <td><strong>M<sub>xy</sub>(t) = M<sub>0</sub> · e<sup>−t / T₂</sup></strong> <span class="cite">[cite: 269, 278]</span></td>
+            <td><strong><span class="frac"><span>1</span><span>T<sub>2</sub>*</span></span> = <span class="frac"><span>1</span><span>T<sub>2</sub></span></span> + <span class="frac"><span>1</span><span>T<sub>2</sub>'</span></span></strong> <span class="cite">[cite: 281]</span></td>
+          </tr>
+          <tr>
+            <td><strong>Definition der Zeitkonstante (Klausur!)</strong></td>
+            <td>Nach <strong>t = T<sub>1</sub></strong> hat M<sub>z</sub> wieder <strong>1 − e<sup>−1</sup> ≈ 63 % von M<sub>0</sub></strong> erreicht <span class="cite">[cite: 275]</span>.</td>
+            <td>Nach <strong>t = T<sub>2</sub></strong> ist M<sub>xy</sub> auf <strong>e<sup>−1</sup> ≈ 37 % von M<sub>0</sub></strong> abgefallen (nach <strong>5 · T<sub>2</sub></strong> ist M<sub>xy</sub> ≈ 0) <span class="cite">[cite: 278, 280]</span>.</td>
+            <td><strong>T<sub>2</sub> ist irreversibel</strong> (reine Gewebeeigenschaft); <strong>T<sub>2</sub>' ist reversibel</strong> (durch 180°-Spin-Echo umkehrbar!) ⇒ <strong>T<sub>2</sub>* ist teilweise reversibel</strong> <span class="cite">[cite: 281, 292]</span>.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <details class="low-yield">
+        <summary>⚙️ Am Rande erwähnt (Folie 49–52): Die Bloch-Gleichungen (Nobelpreis Felix Bloch 1952)</summary>
+        <p>Die vektorielle Differentialgleichung <span class="frac"><span>d<span class="vec">M</span>(t)</span><span>dt</span></span> = γ · <span class="vec">M</span>(t) × <span class="vec">B</span>(t) − (M<sub>x</sub>/T<sub>2</sub>, M<sub>y</sub>/T<sub>2</sub>, (M<sub>0</sub> − M<sub>z</sub>)/T<sub>1</sub>)<sup>T</sup> kombiniert Präzession (Kreuzprodukt) und Relaxation <span class="cite">[cite: 266, 267, 268]</span>. Für Mediziner sind nur die oben in der Tabelle stehenden <strong>gelösten Exponentialfunktionen</strong> für M<sub>z</sub>(t) und M<sub>xy</sub>(t) relevant <span class="cite">[cite: 269]</span>!</p>
+      </details>
+
+      <h2>3.2 Musterlösung zur Lückentext-Übung aus dem Seminar (Folie 62 & 63)</h2>
+      <div class="card exam-card">
+        <span class="badge exam">🔥 Original-Seminarübung (Folie 62–63): T₂-Relaxation & Verlust der Phasenkohärenz</span>
+        <ol>
+          <li><strong>Bild (1) – Ein 90°-RF-Puls wird im rotierenden Koordinatensystem appliziert <span class="cite">[cite: 279]</span>:</strong>
+            <br>• I. (<strong><u>M<sub>0</sub></u></strong>) wird aus dem thermischen Gleichgewicht ausgelenkt <span class="cite">[cite: 279]</span>,
+            <br>• II. (<strong><u>M<sub>z</sub></u></strong>) wird zu Null, während <span class="cite">[cite: 252, 279]</span>
+            <br>• III. (<strong><u>M<sub>xy</sub></u></strong>) die Amplitude von (<strong><u>M<sub>0</sub></u></strong> / <strong><u>M<sub>z</sub></u></strong>) vor dem RF-Puls annimmt <span class="cite">[cite: 252, 279]</span>.
+          </li>
+          <li><strong>Bild (2) – Der RF-Puls ist ausgeschaltet, wir betrachten die T<sub>2</sub>-Relaxation <span class="cite">[cite: 279]</span>:</strong>
+            <br>• I. Gezeichnet sind Spins in der (<strong><u>transversalen</u></strong>) Ebene <span class="cite">[cite: 279]</span>.
+            <br>• II. Der blaue gestrichelte Spin (eilt im Bild voraus) hat wegen lokaler Feldinhomogenitäten eine (<strong><u>höhere</u></strong>) Geschwindigkeit als der blaue, durchgezogene Spin (der rot gestrichelte Spin fällt zurück und hat eine <em>niedrigere</em> Geschwindigkeit) <span class="cite">[cite: 279]</span>.
+          </li>
+          <li><strong>Bild (3) – Fortgang der Dephasierung <span class="cite">[cite: 280]</span>:</strong>
+            <br>• I. Mit der Zeit sind immer (<strong><u>weniger</u></strong>) Spins zueinander in Phase, und <span class="cite">[cite: 280]</span>
+            <br>• II. die Amplitude des Summenvektors M<sub>xy</sub> wird (<strong><u>kleiner</u></strong>) <span class="cite">[cite: 280]</span>.
+          </li>
+          <li><strong>Bild (4) – Vollständiger Zerfall <span class="cite">[cite: 280]</span>:</strong>
+            <br>• I. Nach einer Zeit von ca. 5 · (<strong><u>T<sub>2</sub></u></strong>) ist die transversale Magnetisierung M<sub>xy</sub> praktisch bei Null (da e<sup>−5</sup> ≈ 0,0067 &lt; 1 %) <span class="cite">[cite: 280]</span>.
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ==================== SEKTION 4: PRAXISEINHEIT & SIMULATOR ==================== -->
+    <section id="sec4" class="tab-section">
+      <h1>4. Praxiseinheit Tisch-MRT (Alle Lösungen) & Live-Simulator</h1>
+      <p class="section-lead">Praktikumsskript Kap. 4.7 & 4.8 (S. 83–94, Software PD teach-m 2.0) – Vollständige Antworten auf alle 5 Versuchsstationen plus interaktiver Pulssequenz-Simulator <span class="cite">[cite: 283, 285, 287, 288, 290, 292]</span>.</p>
+
+      <h2>4.1 Alle 5 Stationen der Praxiseinheit (Kap. 4.8.1 – 4.8.5) mit Musterlösungen</h2>
+
+      <details open>
+        <summary>🔬 Versuch 4.8.1: MR-Frequenz (Larmorfrequenz, B₀-Berechnung, Eisen & Probenwechsel)</summary>
+        <p><strong>Sequenz & Hintergrund:</strong> Ein einzelner 90°-Puls regt die 10-mm-Ölprobe an; anschließend wird der FID aufgezeichnet <span class="cite">[cite: 285]</span>. Da sich B<sub>0</sub> mit der Temperatur leicht ändert, muss die Systemfrequenz vorab auf die Larmorfrequenz ν<sub>L</sub> = <span class="frac"><span>γ</span><span>2π</span></span> · B<sub>0</sub> (mit γ = 26,75 · 10<sup>7</sup> rad/(s·T)) kalibriert werden <span class="cite">[cite: 285]</span>.</p>
+        <ul>
+          <li><strong>Aufgabe (1) – Variieren der Systemfrequenz:</strong> Auf dem Bildschirm sieht man nicht direkt ν<sub>L</sub> (ca. 23,6 MHz), sondern nach Demodulation ins rotierende Bezugssystem die <strong>Differenzfrequenz Δf = |ν<sub>L</sub> − f<sub>System</sub>|</strong> <span class="cite">[cite: 286]</span>! Je weiter f<sub>System</sub> von ν<sub>L</sub> entfernt ist, desto schneller oszilliert das FID-Signal <span class="cite">[cite: 286]</span>.</li>
+          <li><strong>Aufgabe (2) – Einstellung auf null Oszillationen & B<sub>0</sub>-Berechnung:</strong> Zeigt das Signal keine Oszillationen mehr, gilt exakt f<sub>System</sub> = ν<sub>L</sub> ≈ <strong>23,60 MHz</strong> (siehe Abb. 4.21a) <span class="cite">[cite: 286]</span>. Daraus folgt für die Magnetfeldstärke des Tisch-Permanentmagneten <span class="cite">[cite: 285, 286]</span>:
+            <div class="formula-box">
+              B<sub>0</sub> = <span class="frac"><span>2π · ν<sub>L</sub></span><span>γ</span></span> = <span class="frac"><span>2π · 23,6 · 10<sup>6</sup> s<sup>−1</sup></span><span>26,75 · 10<sup>7</sup> rad/(s·T)</span></span> ≈ <strong>0,554 Tesla (ca. 0,55 T)</strong> <span class="cite">[cite: 285, 286]</span>
+            </div>
+          </li>
+          <li><strong>Aufgabe (3) – Einbringen eines Eisenstücks in Magnetnähe:</strong> Eisen ist ferromagnetisch und verzerrt das Magnetfeld B<sub>0</sub> massiv (starke Feldinhomogenität + Verschiebung von B<sub>0</sub>) → Es treten sofort wieder schnelle Oszillationen auf (ν<sub>L</sub> verschiebt sich) und der FID klingt extrem schnell ab (T<sub>2</sub>* wird winzig!) <span class="cite">[cite: 286, 288]</span>.</li>
+          <li><strong>Aufgabe (4) – Probenwechsel (Öl gegen Wasser):</strong> Die Larmorfrequenz ν<sub>L</sub> ändert sich praktisch <strong>nicht</strong>, da in beiden Proben derselbe Atomkern (Wasserstoff <sup>1</sup>H mit identischem γ) im selben Magnetfeld B<sub>0</sub> gemessen wird (lediglich die Relaxationsdauer des FIDs unterscheidet sich) <span class="cite">[cite: 285, 286]</span>.</li>
+          <li><strong>Aufgabe (5) – Warum Real- und Imaginärteil betrachten?</strong> Das empfangene FID-Signal wird mit zwei um 90° phasenverschobenen Referenzsignalen (Quadraturdetektion: Kosinus = Realteil, Sinus = Imaginärteil) gemischt. Nur mit <em>beiden</em> Anteilen erkennt man die Phasenlage und das Vorzeichen der Frequenzabweichung (ob f<sub>System</sub> oberhalb oder unterhalb von ν<sub>L</sub> liegt) und erhält die wahre Einhüllende (Betrag) <span class="cite">[cite: 263, 284, 286, 287]</span>.</li>
+        </ul>
+      </details>
+
+      <details open>
+        <summary>🔬 Versuch 4.8.2: MR-Flipwinkel (Pulslänge Duration für 90°- und 180°-Puls)</summary>
+        <ul>
+          <li><strong>Aufgabe (1) – Beobachtung beim Variieren der Pulslänge t<sub>RF</sub> (1 bis 200 μs):</strong> Da der Flipwinkel <strong>θ = γ · B<sub>1</sub> · t<sub>RF</sub></strong> proportional zur Pulsdauer t<sub>RF</sub> ist, wächst die Anfangsamplitude des FIDs (~ sin θ) zunächst an, erreicht bei <strong>θ = 90° ihr absolutes Maximum</strong> (M<sub>xy</sub> = M<sub>0</sub>), fällt danach wieder ab und wird bei der doppelten Pulslänge (<strong>θ = 180°</strong>, reine Inversion M<sub>z</sub> = −M<sub>0</sub>) <strong>gleich Null (M<sub>xy</sub> = 0)</strong> <span class="cite">[cite: 249, 255, 287, 288]</span>!</li>
+          <li><strong>Aufgabe (2) – Welche Pulslänge erzeugt den 90°-Puls?</strong> Genau diejenige Einstellung (in Abb. 4.23 typischerweise um <strong>ca. 50 μs</strong>), bei der die Anfangsamplitude des FID-Signals maximal ist (wird über „Save as global pulse length" gespeichert) <span class="cite">[cite: 288]</span>.</li>
+        </ul>
+      </details>
+
+      <details open>
+        <summary>🔬 Versuch 4.8.3: B₀-Magnetfeldinhomogenität (Shimming in X, Y, Z)</summary>
+        <ul>
+          <li><strong>Aufgabe (1) & (2) – Beobachtung beim Verstellen der Shim-Regler (Shim X, Y, Z in mT/m):</strong> In einem inhomogenen Magnetfeld präzedieren die Spins an verschiedenen Orten der Probe mit leicht unterschiedlichen Larmorfrequenzen und dephasieren sehr schnell → der FID ist kurz <span class="cite">[cite: 288]</span>. Durch iteratives Optimieren der Zusatzspulen (Shim X → Y → Z) wird das Feld B<sub>0</sub> homogenisiert (T<sub>2</sub>' wird maximiert): <strong>Je besser der Shim eingestellt ist, desto langsamer klingt der FID ab (maximale FID-Länge / Fläche unter der Einhüllenden)</strong> <span class="cite">[cite: 288, 289, 290]</span>!</li>
+        </ul>
+      </details>
+
+      <details open>
+        <summary>🔬 Versuch 4.8.4 & 4.8.5: T₁-Messung (Saturation Recovery) & T₂-Messung (Multi-Spin-Echo) – Öl vs. Wasser</summary>
+        <div class="svg-box">
+          <svg viewBox="0 0 760 140" xmlns="http://www.w3.org/2000/svg">
+            <!-- Links: T1 Saturation Recovery -->
+            <text x="175" y="15" fill="#f87171" font-size="11" font-weight="bold" text-anchor="middle">4.8.4 T₁-Sequenz: Saturation Recovery (90° – DT – 90°)</text>
+            <line x1="20" y1="105" x2="340" y2="105" stroke="#94a3b8" stroke-width="1.5"/>
+            <rect x="35" y="35" width="12" height="70" fill="#ef4444"/>
+            <text x="41" y="30" fill="#ef4444" font-size="10" font-weight="bold" text-anchor="middle">90°</text>
+            <path d="M 47 55 Q 55 130, 65 80 T 85 100 T 110 105" fill="none" stroke="#38bdf8" stroke-width="2"/>
+            <rect x="195" y="35" width="12" height="70" fill="#ef4444"/>
+            <text x="201" y="30" fill="#ef4444" font-size="10" font-weight="bold" text-anchor="middle">90°</text>
+            <path d="M 207 65 Q 215 125, 225 85 T 245 102 T 270 105" fill="none" stroke="#38bdf8" stroke-width="2"/>
+            <line x1="41" y1="122" x2="201" y2="122" stroke="#fbbf24" stroke-width="1.5"/>
+            <text x="121" y="135" fill="#fbbf24" font-size="10" font-weight="bold" text-anchor="middle">Variabler Pulsabstand DT (1×DT, 2×DT, ...)</text>
+
+            <!-- Rechts: T2 Multi-Spin-Echo -->
+            <text x="570" y="15" fill="#4ade80" font-size="11" font-weight="bold" text-anchor="middle">4.8.5 T₂-Sequenz: Multi-Spin-Echo / TSE (90° – 180° – Echo – 180° – Echo)</text>
+            <line x1="395" y1="105" x2="745" y2="105" stroke="#94a3b8" stroke-width="1.5"/>
+            <rect x="405" y="40" width="10" height="65" fill="#ef4444"/>
+            <text x="410" y="34" fill="#ef4444" font-size="10" font-weight="bold" text-anchor="middle">90°</text>
+            <path d="M 415 55 Q 425 115, 435 95 T 455 105" fill="none" stroke="#38bdf8" stroke-width="1.8"/>
+            <rect x="470" y="30" width="16" height="75" fill="#b91c1c"/>
+            <text x="478" y="25" fill="#f87171" font-size="10" font-weight="bold" text-anchor="middle">180°</text>
+            <!-- Echo 1 -->
+            <path d="M 510 105 Q 525 115, 535 90 Q 542 52, 550 90 Q 560 115, 575 105" fill="none" stroke="#4ade80" stroke-width="2.2"/>
+            <text x="542" y="45" fill="#4ade80" font-size="10" font-weight="bold" text-anchor="middle">Echo 1</text>
+            <rect x="598" y="30" width="16" height="75" fill="#b91c1c"/>
+            <text x="606" y="25" fill="#f87171" font-size="10" font-weight="bold" text-anchor="middle">180°</text>
+            <!-- Echo 2 -->
+            <path d="M 640 105 Q 655 112, 665 95 Q 672 70, 680 95 Q 690 112, 705 105" fill="none" stroke="#4ade80" stroke-width="2.2"/>
+            <text x="672" y="62" fill="#4ade80" font-size="10" font-weight="bold" text-anchor="middle">Echo 2</text>
+            <line x1="410" y1="122" x2="542" y2="122" stroke="#fbbf24" stroke-width="1.5"/>
+            <text x="476" y="135" fill="#fbbf24" font-size="10" text-anchor="middle">TE</text>
+            <line x1="542" y1="122" x2="672" y2="122" stroke="#fbbf24" stroke-width="1.5"/>
+            <text x="607" y="135" fill="#fbbf24" font-size="10" font-weight="bold" text-anchor="middle">TE</text>
+          </svg>
+        </div>
+        <ul>
+          <li><strong>4.8.4 T<sub>1</sub>-Messung (Saturation Recovery, Abb. 4.26 & 4.27):</strong>
+            <br>• <em>Prinzip:</em> Ein erster 90°-Puls bringt M<sub>z</sub> auf 0 (Sättigung). Nach einer Wartezeit <strong>DT</strong> kippt ein zweiter 90°-Puls die bis dahin wieder aufgebaute Längsmagnetisierung M<sub>z</sub>(DT) = M<sub>0</sub>·(1 − e<sup>−DT/T1</sup>) in die Messebene <span class="cite">[cite: 275, 290, 291]</span>.
+            <br>• <em>Einstellwerte laut Skript (S. 92):</em> <strong>Pause time = 3 × T<sub>1,geschätzt</sub></strong>, <strong>Recovery time increment = 1/8 × T<sub>1,geschätzt</sub></strong>, Number of points = 24 <span class="cite">[cite: 292]</span>:
+            <br>&nbsp;&nbsp;👉 <strong>Öl (Schätzwert T<sub>1</sub> ≈ 0,1 s = 100 ms):</strong> Pause time = <strong>300 ms</strong>, Increment = <strong>12,5 ms (bzw. 13 ms)</strong> <span class="cite">[cite: 291, 292]</span>.
+            <br>&nbsp;&nbsp;👉 <strong>Wasser (Schätzwert T<sub>1</sub> ≈ 3,0 s = 3000 ms):</strong> Pause time = <strong>9000 ms (9 s)</strong>, Increment = <strong>375 ms</strong> <span class="cite">[cite: 292]</span>.
+          </li>
+          <li><strong>4.8.5 T<sub>2</sub>-Messung (Multi-Spin-Echo / Turbo-Spin-Echo TSE, Abb. 4.28 & 4.29):</strong>
+            <br>• <em>Warum Spin-Echo statt FID?</em> Der einfache FID zerfällt viel zu schnell mit T<sub>2</sub>* (wegen statischer B<sub>0</sub>-Inhomogenitäten). Sendet man nach dem 90°-Puls wiederholt <strong>180°-Refokussierungspulse</strong>, werden die statischen Phasenfehler (T<sub>2</sub>') jedes Mal bei der Echozeit TE wieder rückgängig gemacht (Re-Phasierung zum Echo!). Die Spitzen der Echos fallen dann nur noch mit der <strong>wahren, irreversiblen Spin-Spin-Relaxationszeit T<sub>2</sub></strong> ab <span class="cite">[cite: 281, 292, 293]</span>!
+            <br>• <em>Vergleich Öl vs. Wasser (Aufgabe 5 & 7):</em> Große, träge Fettsäuremoleküle im <strong>Öl</strong> geben Energie sehr effizient ans Gitter ab und wechselwirken stark → <strong>Öl hat ein kurzes T<sub>1</sub> (~ 100 ms) und kurzes T<sub>2</sub> (~ 50–100 ms)</strong>. Kleine, extrem bewegliche H<sub>2</sub>O-Moleküle im <strong>reinen Wasser</strong> relaxieren sehr langsam → <strong>Wasser hat ein sehr langes T<sub>1</sub> (~ 3000 ms) und langes T<sub>2</sub> (~ 1500–2500 ms)</strong> (daher muss bei Wasser für einen vollständigen Abfall die Echozeit TE größer gewählt werden als die 2 ms beim Öl!) <span class="cite">[cite: 220, 292, 293, 294]</span>.
+          </li>
+        </ul>
+      </details>
+
+      <h2>4.2 Interaktiver MRT-Relaxations- & Spin-Echo-Simulator</h2>
+      <div class="card">
+        <p>Wähle ein Gewebe/Medium aus dem Seminar oder Praktikum, stelle Magnetfeld B<sub>0</sub> und Echozeit TE ein und beobachte live die Larmorfrequenz, die T<sub>1</sub>-Erholung (M<sub>z</sub>), den wahren T<sub>2</sub>-Abfall (Echo-Einhüllende) und den schnellen T<sub>2</sub>*-Abfall (FID) <span class="cite">[cite: 220, 275, 278, 281, 292, 293]</span>:</p>
+        <div class="calc-row" style="margin-bottom:12px;">
+          <label>Gewebe / Probe:
+            <select id="simTissue" class="calc-input" style="width:210px;" onchange="drawMriSim()">
+              <option value="oil">Praktikum: 10 mm Öl (T₁=100ms, T₂=80ms)</option>
+              <option value="water">Praktikum: Wasser / Liquor (T₁=2000ms, T₂=1000ms)</option>
+              <option value="wm">Gehirn: Weiße Substanz WM (T₁=550ms, T₂=90ms)</option>
+              <option value="gm">Gehirn: Graue Substanz GM (T₁=1000ms, T₂=100ms)</option>
+            </select>
+          </label>
+          <label>B<sub>0</sub> [Tesla]: <input type="number" step="0.05" id="simB0" class="calc-input" value="0.55" oninput="drawMriSim()"></label>
+          <label>Echozeit TE [ms]: <input type="range" id="simTE" min="40" max="400" step="10" value="120" oninput="drawMriSim()"></label>
+          <span id="lblTE" style="font-weight:bold; color:var(--accent);">TE = 120 ms</span>
+        </div>
+
+        <canvas id="mriCanvas" class="sim-canvas" width="900" height="270"></canvas>
+        <div class="formula-box" id="mriSimOut"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    function openTab(tabId, btn) {
+      document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      if (btn) btn.classList.add('active');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (tabId === 'sec4') drawMriSim();
+    }
+
+    function toggleExamMode() {
+      const body = document.body;
+      const btn = document.getElementById('examFilterBtn');
+      body.classList.toggle('exam-only');
+      const isActive = body.classList.contains('exam-only');
+      btn.classList.toggle('active-filter', isActive);
+      btn.textContent = isActive ? '🎯 Nur Prüfungsrelevantes: AN' : '🎯 Nur Prüfungsrelevantes: AUS';
+    }
+
+    function filterContent() {
+      const q = document.getElementById('searchInput').value.toLowerCase().trim();
+      const sections = document.querySelectorAll('.tab-section');
+      if (!q) {
+        sections.forEach(s => s.style.display = '');
+        const activeBtn = document.querySelector('.nav-btn.active');
+        const idx = Array.from(document.querySelectorAll('.nav-btn')).indexOf(activeBtn);
+        sections.forEach((s, i) => s.classList.toggle('active', i === idx));
+        return;
+      }
+      sections.forEach(s => {
+        s.style.display = s.innerText.toLowerCase().includes(q) ? 'block' : 'none';
+      });
+    }
+
+    function drawMriSim() {
+      const canvas = document.getElementById('mriCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const isLight = document.body.classList.contains('light');
+
+      const tissue = document.getElementById('simTissue').value;
+      const B0 = parseFloat(document.getElementById('simB0').value) || 0.55;
+      const TE = parseFloat(document.getElementById('simTE').value) || 120;
+      document.getElementById('lblTE').textContent = 'TE = ' + TE + ' ms';
+
+      const params = {
+        oil:   { name: 'Ölprobe (Praktikum)', T1: 100,  T2: 80,   T2star: 25 },
+        water: { name: 'Wasser / Liquor (CSF)', T1: 2000, T2: 1000, T2star: 60 },
+        wm:    { name: 'Weiße Hirnsubstanz (WM)', T1: 550,  T2: 90,   T2star: 40 },
+        gm:    { name: 'Graue Hirnsubstanz (GM)', T1: 1000, T2: 100,  T2star: 45 }
+      }[tissue];
+
+      const W = canvas.width, H = canvas.height;
+      const ox = 55, oy = H - 35, plotW = W - 80, plotH = H - 65;
+      const maxT = 1200; // ms auf x-Achse
+
+      ctx.clearRect(0, 0, W, H);
+
+      // Achsen
+      ctx.strokeStyle = isLight ? '#64748b' : '#94a3b8';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(ox, 20); ctx.lineTo(ox, oy); ctx.lineTo(ox + plotW, oy);
+      ctx.stroke();
+
+      // M0 Linie
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(ox, oy - plotH); ctx.lineTo(ox + plotW, oy - plotH); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = isLight ? '#0f172a' : '#f8fafc';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillText('M₀ (100%)', 5, oy - plotH + 4);
+      ctx.fillText('0', 35, oy + 4);
+
+      // Zeitmarken
+      for (let t = 200; t <= maxT; t += 200) {
+        const x = ox + (t / maxT) * plotW;
+        ctx.fillText(t + ' ms', x - 18, oy + 18);
+      }
+
+      // 1. T1-Kurve Mz(t) = M0*(1 - exp(-t/T1)) (Rot)
+      ctx.strokeStyle = '#f87171';
+      ctx.lineWidth = 2.8;
+      ctx.beginPath();
+      for (let px = 0; px <= plotW; px += 2) {
+        const t = (px / plotW) * maxT;
+        const mz = 1 - Math.exp(-t / params.T1);
+        const y = oy - mz * plotH;
+        if (px === 0) ctx.moveTo(ox + px, y); else ctx.lineTo(ox + px, y);
+      }
+      ctx.stroke();
+
+      // 2. T2-Kurve Mxy(t) = M0*exp(-t/T2) (Grün)
+      ctx.strokeStyle = '#4ade80';
+      ctx.lineWidth = 2.8;
+      ctx.beginPath();
+      for (let px = 0; px <= plotW; px += 2) {
+        const t = (px / plotW) * maxT;
+        const mxy = Math.exp(-t / params.T2);
+        const y = oy - mxy * plotH;
+        if (px === 0) ctx.moveTo(ox + px, y); else ctx.lineTo(ox + px, y);
+      }
+      ctx.stroke();
+
+      // 3. FID & Spin-Echos bei Vielfachen von TE (Blau)
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      for (let px = 0; px <= plotW; px += 1) {
+        const t = (px / plotW) * maxT;
+        // Nächstgelegenes Echo-Zentrum (0 für FID, sonst k * TE)
+        const k = Math.round(t / TE);
+        const distToEcho = Math.abs(t - k * TE);
+        const envT2 = Math.exp(-t / params.T2);
+        const envStar = Math.exp(-distToEcho / params.T2star);
+        const osc = Math.abs(Math.cos(t * 0.18));
+        const sig = envT2 * envStar * osc;
+        const y = oy - sig * plotH;
+        if (px === 0) ctx.moveTo(ox + px, y); else ctx.lineTo(ox + px, y);
+      }
+      ctx.stroke();
+
+      // Legende im Plot
+      ctx.fillStyle = '#f87171'; ctx.fillText('■ M_z(t): T₁-Aufbau (T₁ = ' + params.T1 + ' ms)', ox + 20, 36);
+      ctx.fillStyle = '#4ade80'; ctx.fillText('■ M_xy(t): Wahre T₂-Einhüllende (T₂ = ' + params.T2 + ' ms)', ox + 260, 36);
+      ctx.fillStyle = '#38bdf8'; ctx.fillText('■ FID & Spin-Echos bei k·TE (mit T₂* = ' + params.T2star + ' ms)', ox + 560, 36);
+
+      // Larmorfrequenz & Werte bei t = TE berechnen
+      const fLarmor = (26.75e7 / (2 * Math.PI)) * B0 / 1e6; // MHz
+      const mzAtTE = (1 - Math.exp(-TE / params.T1)) * 100;
+      const mxyAtTE = Math.exp(-TE / params.T2) * 100;
+
+      document.getElementById('mriSimOut').innerHTML =
+        `<strong>${params.name}:</strong> Larmorfrequenz ν<sub>L</sub> (bei ${B0.toFixed(2)} T) = <strong>${fLarmor.toFixed(2)} MHz</strong> &nbsp;|&nbsp; ` +
+        `Bei t = TE (${TE} ms): <strong>M<sub>z</sub> = ${mzAtTE.toFixed(1)} % M₀</strong> &nbsp;,&nbsp; <strong>Echo-Amplitude M<sub>xy</sub> = ${mxyAtTE.toFixed(1)} % M₀</strong>`;
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      drawMriSim();
+    });
+  </script>
+</body>
+</html>
